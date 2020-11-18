@@ -127,12 +127,12 @@ void MetaMapEquation::calculateCodelength(std::vector<InfoNode*>& nodes)
 double MetaMapEquation::calcCodelength(const InfoNode& parent) const
 {
   return parent.isLeafModule() ? calcCodelengthOnModuleOfLeafNodes(parent)
-                               : MapEquation::calcCodelengthOnModuleOfModules(parent);
+                               : Base::calcCodelengthOnModuleOfModules(parent);
 }
 
 double MetaMapEquation::calcCodelengthOnModuleOfLeafNodes(const InfoNode& parent) const
 {
-  const double indexLength = MapEquation::calcCodelength(parent);
+  const double indexLength = Base::calcCodelengthOnModuleOfLeafNodes(parent);
 
   // Meta addition
   auto metaCollection = MetaCollection();
