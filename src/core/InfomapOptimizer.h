@@ -186,6 +186,8 @@ inline void InfomapOptimizer<Objective>::initNetwork()
 
   if (!m_infomap->isMainInfomap())
     m_objective.initSubNetwork(m_infomap->root());
+
+  m_consolidatedObjective = m_objective;
 }
 
 template <typename Objective>
