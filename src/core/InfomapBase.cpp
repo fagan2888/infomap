@@ -30,6 +30,7 @@
 #include <set>
 #include <cstdlib>
 #include <algorithm>
+#include <numeric>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -991,12 +992,12 @@ void InfomapBase::hierarchicalPartition()
       double codelengthAfter = 0.0;
 
       for (InfoNode& module : m_root.infomapTree()) {
-        if (!module.isLeaf() && module.firstChild->isLeafModule()) {
+        const bool childrenAreLeafModules = std::all_of(module.begin(), module.end(), [](const InfoNode& n) { return n.isLeafModule(); });
+
+        if (!module.isLeaf() && childrenAreLeafModules) {
           codelengthBefore += module.codelength;
-          auto numLeafs = 0;
-          for (auto& leafModule : module) {
-            numLeafs += leafModule.childDegree();
-          }
+
+          const unsigned int numLeafs = std::accumulate(module.begin(), module.end(), 0, [](auto tot, const auto& leaf) { return tot + leaf.childDegree(); });
 
           std::vector<unsigned int> modules(numLeafs);
           std::vector<InfoNode*> leafs(numLeafs);
@@ -1009,32 +1010,31 @@ void InfomapBase::hierarchicalPartition()
               ++i;
             }
           }
-          
+
           module.replaceChildrenWithGrandChildren();
-          
+
           auto& subInfomap = getSubInfomap(module).initNetwork(module);
-          
+
           subInfomap.initPartition(modules);
 
           // Run two-level partition + find hierarchically super modules (skip recursion)
           subInfomap.setOnlySuperModules(true).run();
-          
+
           // Collect sub Infomap modules
-          i = 0;
-          for (auto& subLeafPtr : subInfomap.leafNodes()) {
-            modules[i] = subLeafPtr->index;
-            ++i;
-          }
+          const std::vector<InfoNode*>& leafNodes = subInfomap.leafNodes();
+
+          modules.clear();
+          std::transform(leafNodes.begin(), leafNodes.end(), std::back_inserter(modules), [](const InfoNode* subLeaf) { return subLeaf->index; });
 
           // Create new sub modules
-          std::vector<InfoNode*> subModules(numLeafs, nullptr);
+          std::vector<InfoNode*> subModules(leafs.size(), nullptr);
           module.releaseChildren();
 
-          for (auto i = 0; i < numLeafs; ++i) {
-            InfoNode* leaf = leafs[i];
-            unsigned int moduleIndex = modules[i];
+          for (unsigned int j = 0; j < numLeafs; ++j) {
+            InfoNode* leaf = leafs[j];
+            const unsigned int moduleIndex = modules[j];
             if (subModules[moduleIndex] == nullptr) {
-              subModules[moduleIndex] = new InfoNode(subInfomap.leafNodes()[i]->parent->data);
+              subModules[moduleIndex] = new InfoNode(leafNodes[j]->parent->data);
               subModules[moduleIndex]->index = moduleIndex;
               module.addChild(subModules[moduleIndex]);
             }
